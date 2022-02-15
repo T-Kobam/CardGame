@@ -1,3 +1,6 @@
+// 2/15 カードを配って、意思決定を行い、ラウンドを終了する流れまで実装
+// ただし、詳細な動きは未実装。流れだけを作れた
+
 config = {
     "suits": ["H", "D", "C", "S"], // カードの絵柄
     "ranks": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"], // カードの数字
@@ -161,6 +164,8 @@ class GameDecision {
 }
 
 class Table {
+    onPlayer;
+
    /**
     * 
     * @param {*} gameType ゲームタイプ({"blackjack"}から選択)
@@ -181,6 +186,7 @@ class Table {
         this.house = new Player('house', 'house', this.gameType);
         this.players.push(new Player("AI1", "ai", this.gameType));
         this.players.push(new Player("AI2", "ai", this.gameType));
+        this.onPlayer = this.players[0];
         this.gamePhase = 'betting'
 
         // これは各ラウンドの結果をログに記録するための文字列の配列です。
@@ -205,6 +211,8 @@ class Table {
                 Player.gameStatus = "bust";
                 Player.chip -= Player.bet;
             }
+        } else if (decision.action === "stand") {
+            Player.gameStatus = "stand";
         }
     }
 
@@ -213,7 +221,7 @@ class Table {
         NOTE: このメソッドの出力は、各ラウンドの終了時にテーブルのresultsLogメンバを更新するために使用されます。
     */
     blackjackEvaluateAndGetRoundResults() {
-        //TODO: ここから挙動をコードしてください。    
+        this.resultsLog.push(`Round End: Player1 & Player2`, this.players[0], this.players[1],this.players[0].hand,this.players[1].hand);
     }
 
     /*
@@ -242,7 +250,7 @@ class Table {
        return Player : 現在のプレイヤー
     */
     getTurnPlayer() {
-        return this.players;
+        return this.onPlayer;
     }
 
     /*
@@ -251,6 +259,7 @@ class Table {
     */
     haveTurn(userData) {
         //TODO: ここから挙動をコードしてください。
+
         
     }
 
@@ -259,6 +268,7 @@ class Table {
     */
     onFirstPlayer() {
         //TODO: ここから挙動をコードしてください。
+        return this.onPlayer === this.players[0];
     }
 
     /*
@@ -266,6 +276,7 @@ class Table {
     */
     onLastPlayer() {
         //TODO: ここから挙動をコードしてください。
+        return this.onPlayer === this.players[1];
     }
     
     /*
@@ -273,5 +284,43 @@ class Table {
     */
     allPlayerActionsResolved() {
         //TODO: ここから挙動をコードしてください。
+        for (let player of this.players) {
+            if (player.gameStatus != "bust" && player.gameStatus != "stand") {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // 自作: プレイヤーがbetを行う
+    bettingPhase() {
+        for (let player of this.players) {
+            this.evaluateMove(player);
+        }
+    }
+
+    // 自作: アクションを取る
+    takingAction() {
+        for (let player of this.players) {
+            this.evaluateMove(player);
+        }
     }
 }
+
+// ゲーム開始
+// ブラックジャックを選択
+let table1 = new Table("blackjack");
+
+// betを行う
+table1.bettingPhase();
+table1.blackjackAssignPlayerHands();
+while (!table1.allPlayerActionsResolved()) {
+    table1.takingAction();
+}
+table1.blackjackEvaluateAndGetRoundResults();
+// while(table1.gamePhase != 'roundOver'){
+//     table1.haveTurn();
+// }
+
+// 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
+console.log(table1.resultsLog);
