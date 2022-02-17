@@ -124,11 +124,107 @@ class Player {
             if (this.bet === 0) {
                 return new GameDecision("bet", 50);
             }
+            
+            // houseのオープンカード
+            const openCard = userData.hand[0];
 
-            if (this.getHandScore() <= 15) {
-                return new GameDecision("hit", 0);
+            // 2枚とも同じsuitか(スプリットケース)
+            if (this.hand[0].rank === this.hand[1].rank) {
+                // A, 2, 3, 4, 6, 7, 8, 9の場合
+                if (["A", "2", "3", "4", "6", "7", "8", "9"].includes(this.hand[0].rank)) {
+                    return new GameDecision("hit", 0);
+                }
+                // ５の場合 
+                else if (this.hand[0].rank === "5") {
+                    if (["A", "10", "J", "Q", "K"].includes(openCard)) {
+                        return new GameDecision("hit", 0)
+                    } else {
+                        return new GameDecision("double", this.bet)
+                    }
+                } 
+                // 9の場合
+                else if (this.hand[0].rank === "9") {
+                    if (["A", "7", "10", "J", "Q", "K"].includes(openCard)) {
+                        return new GameDecision("stand", 0);
+                    } else {
+                        return new GameDecision("hit", 0);
+                    }
+                } 
+                // 10の場合
+                else {
+                    return new GameDecision("stand", 0);
+                }
             }
-            return new GameDecision("stand", 0);
+            // Aceを含んでいるか(ソフトハンドケース)
+            if (this.hand.some(card => card.rank === "A")) {
+                // 2, 3の場合
+                if (this.hand.some(card => ["2", "3"].includes(card.rank))) {
+                    if (["5", "6"].includes(openCard)) {
+                        return new GameDecision("double", this.bet);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                // 4, 5の場合
+                else if (this.hand.some(card => ["4", "5"].includes(card.rank))) {
+                    if (["3", "4", "5", "6"].includes(openCard)) {
+                        return new GameDecision("double", this.bet);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                // 6の場合
+                else if (this.hand.some(card => card.rank === "6")) {
+                    if (["3", "4", "5", "6"].includes(openCard)) {
+                        return new GameDecision("double", this.bet);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                // 7の場合
+                else if (this.hand.some(card => card.rank === "7")) {
+                    if (["3", "4", "5", "6"].includes(openCard)) {
+                        return new GameDecision("hit", 0);
+                    }
+                    else if (["2", "7", "8"].includes(openCard)) {
+                        return new GameDecision("stand", 0);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                else {
+                    return new GameDecision("stand", 0);
+                }
+
+            }
+            // ハードハンドケース
+            if (this.getHandScore() >= 17) return new GameDecision("stand", 0);
+            else if (this.getHandScore() <= 8) return new GameDecision("hit", 0);
+            else if (this.getHandScore() >= 13) {
+                if (["2", "3", "4", "5", "6"].includes(openCard)) return new GameDecision("stand", 0);
+                else return new GameDecision("hit", 0);
+            }
+            else if (this.getHandScore() === 12) {
+                if (["4", "5", "6"].includes(openCard)) return new GameDecision("stand", 0);
+                else return new GameDecision("hit", 0);
+            }
+            else if (this.getHandScore() === 11) {
+                if (openCard === "A") return new GameDecision("hit", 0);
+                else return new GameDecision("double", this.bet);
+            }
+            else if (this.getHandScore() === 10) {
+                if (["A", "10", "J", "Q", "K"].includes(openCard)) return new GameDecision("hit", 0);
+                else return new GameDecision("double", this.bet);
+            }
+            else if (this.getHandScore() === 9) {
+                if (["3", "4", "5", "6"].includes(openCard)) return new GameDecision("double", this.bet);
+                else return new GameDecision("hit", 0);
+            }
+            else return new GameDecision("hit", 0);
         }
     }
 
@@ -201,7 +297,7 @@ class Table {
         プレイヤーが「ヒット」し、手札が21以上の場合、gameStatusを「バスト」に設定し、チップからベットを引きます。
     */
     evaluateMove(Player) {
-        const decision = Player.promptPlayer();
+        const decision = Player.promptPlayer(this.house);
         
         if (decision.action === "bet") {
             Player.bet = decision.amount;
@@ -211,7 +307,15 @@ class Table {
                 Player.gameStatus = "bust";
                 Player.chip -= Player.bet;
             }
-        } else if (decision.action === "stand") {
+        } else if (decision.action === "double") {
+            Player.hand.push(this.deck.drawOne());
+            Player.hand.push(this.deck.drawOne());
+            if (Player.getHandScore() > 21) {
+                Player.gameStatus = "bust";
+                Player.chip -= Player.bet;
+            }
+        }
+        else if (decision.action === "stand") {
             Player.gameStatus = "stand";
         }
     }
@@ -221,17 +325,19 @@ class Table {
         NOTE: このメソッドの出力は、各ラウンドの終了時にテーブルのresultsLogメンバを更新するために使用されます。
     */
     blackjackEvaluateAndGetRoundResults() {
-        this.resultsLog.push(`Round End: Player1 & Player2`, this.players[0], this.players[1],this.players[0].hand,this.players[1].hand);
+        this.resultsLog.push('Round End: ', JSON.stringify(this.house), this.players.map((it) => { return JSON.stringify(it); }));
     }
 
-    /*
-       return null : デッキから2枚のカードを手札に加えることで、全プレイヤーの状態を更新します。
-       NOTE: プレイヤーのタイプが「ハウス」の場合は、別の処理を行う必要があります。
+   /**
+    * デッキから2枚のカードを手札に加える
+    * 全プレイヤーの状態を更新する
     */
     blackjackAssignPlayerHands() {
+        this.deck.shuffle();
         for (let i = 0; i < 2; i++) {
-            this.players[0].hand.push(this.deck.drawOne());
-            this.players[1].hand.push(this.deck.drawOne());
+            for (const player of this.players) {
+                player.hand.push(this.deck.drawOne());
+            }
             this.house.hand.push(this.deck.drawOne());
         }
     }
@@ -244,6 +350,7 @@ class Table {
             player.hand = [];
             player.bet = 0;
         }
+        this.house.hand = [];
     }
     
     /*
