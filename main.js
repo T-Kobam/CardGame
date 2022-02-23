@@ -365,7 +365,7 @@ class Table {
         for (const player of this.players) {
             player.hand = [];
             player.bet = 0;
-            player.gameStatus = "bet";
+            player.gameStatus = "betting";
         }
         this.house.hand = [];
         this.deck.resetDeck();
@@ -485,9 +485,11 @@ class Table {
 // ブラックジャックを選択
 let table1 = new Table("blackjack");
 
-while(table1.gamePhase != 'roundOver'){
-    table1.haveTurn();
+for (let i = 0; i < 10; i++) {
+    table1.gamePhase = 'betting';
+    while(table1.gamePhase != 'roundOver'){
+        table1.haveTurn();
+    }
 }
-
 // 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
 console.log(table1.resultsLog);
