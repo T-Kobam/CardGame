@@ -152,18 +152,52 @@
     
             </div>
 
-            <!-- アクション選択一覧 -->
+            <!-- アクション選択一覧 & ベット選択 -->
             <div class="container mt-5">
-                <div class="row justify-content-center">
+                <div class="row justify-content-center d-none">
                     <button class="btn btn-light col-md-1 mx-1">Surrender</button>
                     <button class="btn btn-primary col-md-1 mx-1">Stand</button>
                     <button class="btn btn-warning col-md-1 mx-1">Hit</button>
                     <button class="btn btn-danger col-md-1 mx-1">Double</button>
                 </div>
+
+                <div class="row justify-content-center">
+                    <div class="col-md-3 justify-content-center bg-gray form-inline">
+                        <button class="btn col-md-2 btn-danger">-</button>
+                        <input type="text" class="form-control col-md-3" value="0" id="bet-5">
+                        <button class="btn col-md-2 btn-primary">+</button>
+                        <div class="w-100"></div>
+                        <label for="bet-5" class="text-white">5</label>
+                    </div>
+
+                    <div class="col-md-3 justify-content-center bg-gray form-inline">
+                        <button class="btn col-md-2 btn-danger">-</button>
+                        <input type="text" class="form-control col-md-3" value="0" id="bet-10">
+                        <button class="btn col-md-2 btn-primary">+</button>
+                        <div class="w-100"></div>
+                        <label for="bet-10" class="text-white">10</label>
+                    </div>
+
+                    <div class="col-md-3 justify-content-center bg-gray form-inline">
+                        <button class="btn col-md-2 btn-danger">-</button>
+                        <input type="text" class="form-control col-md-3" value="0" id="bet-20">
+                        <button class="btn col-md-2 btn-primary">+</button>
+                        <div class="w-100"></div>
+                        <label for="bet-20" class="text-white">20</label>
+                    </div>
+
+                    <div class="col-md-3 justify-content-center bg-gray form-inline">
+                        <button class="btn col-md-2 btn-danger">-</button>
+                        <input type="text" class="form-control col-md-3" value="0" id="bet-=50">
+                        <button class="btn col-md-2 btn-primary">+</button>
+                        <div class="w-100"></div>
+                        <label for="bet-50" class="text-white">50</label>
+                    </div>
+                    <div class="w-100"></div>
+                    <button class="btn btn-warning col-md-4 mt-2">Bet</button>
+                </div>
             </div>
 
         </div>
-
-        <!-- ベット画面 -->
     </body>
 </html>
