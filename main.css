@@ -1,0 +1,18 @@
+.bg-gray {
+    background-color: gray;
+}
+
+.bg-red {
+    background-color: red;
+}
+
+.bg-blue {
+    background-color: rgb(0, 162, 255);
+}
+
+.bg-main-image {
+    background-image: url("images/bg_main.jpg");
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}

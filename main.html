@@ -2,7 +2,7 @@
 <html lang="ja">
     <head>
         <meta charset="UTF-8">
-        <title>Clicker Empire Game</title>
+        <title>Card Game</title>
         <!--bootstrap-->
         <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
 
@@ -14,6 +14,27 @@
     </head>
 
     <body>
-
+        <div class="vh-100 d-flex justify-content-center align-items-center bg-main-image">
+            <div class="col-md-8 container justify-content-center">
+                <div class="row">
+                    <h4 class="text-white text-center col-md-12">Welcome to Card Game!</h4>
+                </div>
+                <div class="row justify-content-center">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control col-md-12" placeholder="name">
+                    </div>
+                    <div class="w-100"></div>
+                    <div class="col-md-3 mt-2">
+                        <select id="game-select" class="custom-select" aria-label="ゲームを選択">
+                            <option selected value="blackjack">blackjack</option>
+                            <option value="porker">porker</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row justify-content-center mt-2">
+                    <button class="btn btn-info col-md-2">Start Game</button>
+                </div>
+            </div>
+        </div>
     </body>
 </html>
