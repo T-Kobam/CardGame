@@ -287,7 +287,8 @@ class Table {
         this.players.push(new Player("AI1", "ai", this.gameType));
         this.players.push(new Player("AI2", "ai", this.gameType));
         this.turnCounter = 0;
-        this.gamePhase = 'betting'
+        this.gamePhase = 'betting';
+        this.gameRound = 1;
 
         // これは各ラウンドの結果をログに記録するための文字列の配列です。
         this.resultsLog = []
@@ -332,7 +333,11 @@ class Table {
         NOTE: このメソッドの出力は、各ラウンドの終了時にテーブルのresultsLogメンバを更新するために使用されます。
     */
     blackjackEvaluateAndGetRoundResults() {
-        this.resultsLog.push('Round End: ', JSON.stringify(this.house), this.players.map((it) => { return JSON.stringify(it); }));
+        this.resultsLog.push(
+            `${this.gameRound} Round End: `, 
+            JSON.stringify({ name: this.house.name, hand: this.house.hand, total: this.house.getHandScore() }), 
+            this.players.map((it) => { return JSON.stringify({ name: it.name, winAmount: it.winAmount, chips: it.chips, hand: it.hand, total: it.getHandScore() }); })
+        );
     }
 
    /**
@@ -414,6 +419,7 @@ class Table {
             this.evaluateResults();
             this.blackjackEvaluateAndGetRoundResults();
             this.blackjackClearPlayerHandsAndBets();
+            this.gameRound++;
             this.gamePhase = "roundOver"
         }
 
@@ -450,6 +456,7 @@ class Table {
     evaluateResults() {
         for (const player of this.players) {
             if (player.getHandScore() > 21) {
+                player.winAmount -= player.bet;
                 player.chips -= player.bet;  
             }
             else if (this.house.getHandScore() > 21 || (player.getHandScore() > this.house.getHandScore())) {
@@ -457,6 +464,7 @@ class Table {
                 player.chips += player.bet;
             }
             else if (this.house.getHandScore() <= 21 && (player.getHandScore() <= this.house.getHandScore())) {
+                player.winAmount -= player.bet;
                 player.chips -= player.bet;
             }
         }
@@ -478,7 +486,6 @@ class Table {
 let table1 = new Table("blackjack");
 
 while(table1.gamePhase != 'roundOver'){
-// for (let i = 0; i < 50; i++) {
     table1.haveTurn();
 }
 
