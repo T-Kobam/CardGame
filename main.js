@@ -493,3 +493,15 @@ for (let i = 0; i < 10; i++) {
 }
 // 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
 console.log(table1.resultsLog);
+
+// ボタンが押下されたことによるリスナー作成
+
+// ベットの枚数調整ボタン
+document.querySelectorAll(".plus-5")[0].addEventListener("click", () => {
+    const value = parseInt(document.getElementById("bet-5").value) + 1;
+    document.getElementById("bet-5").value = value;
+});
+document.querySelectorAll(".minus-5")[0].addEventListener("click", () => {
+    const value = parseInt(document.getElementById("bet-5").value) - 1;
+    document.getElementById("bet-5").value = (value < 0) ? 0 : value;
+});
