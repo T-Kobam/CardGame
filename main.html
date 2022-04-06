@@ -50,29 +50,16 @@
 
                 <!-- houseの手札 -->
                 <div class="container mb-5">
-                    <div class="row justify-content-center" id="dealer-hand">
+                    <div class="row justify-content-center">
                         <div class="col-md-8">
                             <h1 class="text-white text-center">Dealer</h1>
                         </div>
                         <div class="w-100"></div>
                         <div>
-                            <p class="text-white house">Status:<span>Bust</span></p>
+                            <p class="text-white">Status:<span id="house-status">Waiting for bets</span></p>
                         </div>            
                     </div>
-                    <div class="row justify-content-center">
-                        <div class="card m-2" style="width: 7rem; height: 9rem;">
-                            <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/spade.png" alt="Card image cap">
-                            <div class="card-body">
-                                <h2 class="card-title text-center">2</h2>
-                            </div>
-                        </div>
-                        <div class="card m-2" style="width: 7rem; height: 9rem;">
-                            <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/heart.png" alt="Card image cap">
-                            <div class="card-body">
-                                <h2 class="card-title text-center">2</h2>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="row justify-content-center" id="house-hand"></div>
                 </div>
 
                 <!-- ユーザーの手札一覧 -->
