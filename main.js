@@ -4,6 +4,13 @@
 config = {
     "suits": ["H", "D", "C", "S"], // カードの絵柄
     "ranks": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"], // カードの数字
+
+    // html関連
+    "menu": document.getElementById("menu"),
+    "game": document.getElementById("game"),
+    "action": document.getElementById("action"),
+    "betting": document.getElementById("betting"),
+    "suitsName": { "H": "heart", "D": "diamond", "C": "club", "S": "spade" },
 }
 
 /**
@@ -271,7 +278,7 @@ class Table {
     * @param {*} gameType ゲームタイプ({"blackjack"}から選択)
     * @param {*} betDenominations プレイヤーが選択できるベットの単位(デフォルトは[5,20,50,100])
     */
-    constructor(gameType, betDenominations = [5, 20, 50, 100]) {
+    constructor(gameType, name, type, betDenominations = [5, 20, 50, 100]) {
         this.gameType = gameType;
         this.betDenominations = betDenominations;
         
@@ -284,8 +291,9 @@ class Table {
         
         // プレイヤーをここで初期化してください
         this.house = new Player('house', 'house', this.gameType);
-        this.players.push(new Player("AI1", "ai", this.gameType));
-        this.players.push(new Player("AI2", "ai", this.gameType));
+        this.players.push(new Player("AI-1", "ai", this.gameType));
+        this.players.push(new Player(name, type, this.gameType));
+        this.players.push(new Player("AI-3", "ai", this.gameType));
         this.turnCounter = 0;
         this.gamePhase = 'betting';
         this.gameRound = 1;
@@ -483,25 +491,153 @@ class Table {
 
 // ゲーム開始
 // ブラックジャックを選択
-let table1 = new Table("blackjack");
+// let table1 = new Table("blackjack", "AI-2", "ai");
 
-for (let i = 0; i < 10; i++) {
-    table1.gamePhase = 'betting';
-    while(table1.gamePhase != 'roundOver'){
-        table1.haveTurn();
-    }
-}
-// 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
-console.log(table1.resultsLog);
+// for (let i = 0; i < 10; i++) {
+//     table1.gamePhase = 'betting';
+//     while(table1.gamePhase != 'roundOver'){
+//         table1.haveTurn();
+//     }
+// }
+// // 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
+// console.log(table1.resultsLog);
+
 
 // ボタンが押下されたことによるリスナー作成
 
+// メイン画面
+// Start Game が押下されたら画面を切り替える
+// ただし、名前が入力されていない場合はエラー表示
+// TODO: プレイヤーの人数を可変にする
+let table;
+document.getElementById("start-btn").addEventListener("click", () => {
+    const gameType = document.getElementById("game-type").value;
+    if (gameType !== "blackjack") {
+        alert("選択されたゲームは現在ご利用できません");
+        return;
+    }
+
+    const name = document.getElementById("name").value;
+    if (name.length === 0) {
+        alert("名前を入力してください");
+        return;
+    }
+
+    // nameを取得して、Tableインスタンスを作成
+    const userType = (name.toLowerCase() === "ai") ? "ai" : "user";
+    const userName = (name.toLowerCase() === "ai") ? "AI-2" : name;
+    table = new Table(gameType, userName, userType);
+
+    // 画面にプレイヤーを表示
+    // TODO: Tableインスタンスからプレイヤーの名前の配列を取得したい
+    ["AI-1", userName, "AI-3"].forEach((it) => {
+        createUserHandDiv(it);
+    });
+
+    // 画面を切り替える
+    displayNone(config.menu);
+    displayBlock(config.game);
+});
+
 // ベットの枚数調整ボタン
-document.querySelectorAll(".plus-5")[0].addEventListener("click", () => {
-    const value = parseInt(document.getElementById("bet-5").value) + 1;
-    document.getElementById("bet-5").value = value;
+const betValue = document.querySelectorAll(".bet");
+const plusBtn = document.querySelectorAll(".plus");
+const minusBtn = document.querySelectorAll(".minus");
+for (let i = 0; i < betValue.length; i++) {
+    plusBtn[i].addEventListener("click", () => {
+        const value = parseInt(betValue[i].value) + 1;
+        betValue[i].value = value;
+    });
+    minusBtn[i].addEventListener("click", () => {
+        const value = parseInt(betValue[i].value) - 1;
+        betValue[i].value = (value < 0) ? 0 : value;
+    });
+}
+
+// Betボタンが押下されたことによるリスナー作成
+document.getElementById("bet-btn").addEventListener("click", () => {
+    let totalBet = 0;
+    [5, 10, 20, 50].forEach((num, index) => {
+        totalBet += betValue[index].value * num;
+    });
+
+    if (totalBet <= 0) {
+        alert("ベットしてください");
+        return;
+    }
+
+    displayNone(config.betting);
+    displayBlock(config.action);
+
+    createCardDiv("AI-2", config.suits[1]);
 });
-document.querySelectorAll(".minus-5")[0].addEventListener("click", () => {
-    const value = parseInt(document.getElementById("bet-5").value) - 1;
-    document.getElementById("bet-5").value = (value < 0) ? 0 : value;
-});
+
+/**
+ * 画面を非表示にする
+ * @param element
+ */
+ const displayNone = (element) => {
+    element.classList.add("d-none");
+    element.classList.remove("d-block");
+};
+
+/**
+ * 画面を表示する
+ * @param element 
+ */
+const displayBlock = (element) => {
+    element.classList.remove("d-none");
+    element.classList.add("d-block");
+};
+
+/**
+ * プレイヤーの手札、ステータスをusers-handの要素に追加する
+ * @param name 
+ */
+ const createUserHandDiv = (name) => {
+    const usersHandDiv = document.getElementById("users-hand");
+    usersHandDiv.innerHTML +=
+    `
+    <div class="col-md-auto mx-2">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <h2 class="text-white text-center">${name}</h2>
+            </div>
+            <div class="w-100"></div>
+            <div>
+                <p class="text-white ${name}">Status:<span>Bust</span> Bet:<span>10</span> Chip:<span>100</span></p>
+            </div>
+        </div>
+    
+        <div class="row justify-content-center" id="${name}-hand"></div>
+    `;
+    //     <div class="card mx-1" style="width: 7rem; height: 9rem;">
+    //             <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/spade.png" alt="Card image cap">
+    //             <div class="card-body">
+    //                 <h2 class="card-title text-center">2</h2>
+    //             </div>
+    //         </div>
+    //         <div class="card mx-1" style="width: 7rem; height: 9rem;">
+    //             <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/heart.png" alt="Card image cap">
+    //             <div class="card-body">
+    //                 <h2 class="card-title text-center">2</h2>
+    //             </div>
+    //         </div>
+    //     </div>
+    // </div>
+    // `;
+};
+
+const createCardDiv = (name, suits) => {
+    console.log(config.suitsName.suits);
+    const userHandDiv = document.getElementById(`${name}-hand`);
+    userHandDiv.innerHTML +=
+    `
+    <div class="card mx-1" style="width: 7rem; height: 9rem;">
+        <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/${config.suitsName[suits]}.png" alt="Card image cap">
+        <div class="card-body">
+            <h2 class="card-title text-center">2</h2>
+        </div>
+    </div>
+    `;
+};

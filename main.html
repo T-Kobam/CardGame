@@ -18,43 +18,48 @@
 
     <body>
         <!-- メイン画面 -->
-        <div class="d-none" id="menu">
+        <div class="d-block" id="menu">
             <div class="vh-100 d-flex justify-content-center align-items-center bg-main-image">
                 <div class="col-md-8 container justify-content-center">
                     <div class="row">
-                        <h4 class="text-white text-center col-md-12">Welcome to Card Game!</h4>
+                        <h2 class="text-white text-center col-md-12">Welcome to Card Game!</h2>
+                        <h6 class="text-white text-center col-md-12">To play the game in auto mode, enter the name "AI"</h6>
                     </div>
                     <div class="row justify-content-center">
                         <div class="col-md-3">
-                            <input type="text" class="form-control col-md-12" placeholder="name">
+                            <input type="text" class="form-control col-md-12" placeholder="name" id="name" value="ai">
                         </div>
                         <div class="w-100"></div>
                         <div class="col-md-3 mt-2">
-                            <select id="game-select" class="custom-select" aria-label="ゲームを選択">
+                            <select id="game-type" class="custom-select" aria-label="ゲームを選択">
                                 <option selected value="blackjack">blackjack</option>
                                 <option value="porker">porker</option>
                             </select>
                         </div>
                     </div>
                     <div class="row justify-content-center mt-2">
-                        <button class="btn btn-info col-md-2">Start Game</button>
+                        <button class="btn btn-info col-md-2" id="start-btn">Start Game</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- アクション選択画面 -->
-        <div class="d-block" id="game">
+        <div class="d-none" id="game">
             <div class="vh-100 d-flex flex-column justify-content-center align-content-between bg-green">
 
                 <!-- houseの手札 -->
                 <div class="container mb-5">
-                    <div class="row justify-content-center">
+                    <div class="row justify-content-center" id="dealer-hand">
                         <div class="col-md-8">
                             <h1 class="text-white text-center">Dealer</h1>
                         </div>
+                        <div class="w-100"></div>
+                        <div>
+                            <p class="text-white house">Status:<span>Bust</span></p>
+                        </div>            
                     </div>
-                    <div class="row justify-content-center mt-3">
+                    <div class="row justify-content-center">
                         <div class="card m-2" style="width: 7rem; height: 9rem;">
                             <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/spade.png" alt="Card image cap">
                             <div class="card-body">
@@ -72,8 +77,9 @@
 
                 <!-- ユーザーの手札一覧 -->
                 <div class="container mt-5">
-                    <div class="row justify-content-around">
-                        <div class="col-md-auto mx-2">
+                    <div class="row justify-content-around" id="users-hand">
+                        <!-- Player1 -->
+                        <!-- <div class="col-md-auto mx-2">
                             <div class="row justify-content-center">
                                 <div class="col-md-8">
                                     <h2 class="text-white text-center">AI-1</h2>
@@ -97,12 +103,13 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
-                        <div class="col-md-auto mx-2">
+                        <!-- Player2 -->
+                        <!-- <div class="col-md-auto mx-2">
                             <div class="row justify-content-center">
                                 <div class="col-md-8">
-                                    <h2 class="text-white text-center">AI-1</h2>
+                                    <h2 class="text-white text-center">AI-2</h2>
                                 </div>
                                 <div class="w-100"></div>
                                 <div>
@@ -123,12 +130,13 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
-                        <div class="col-md-auto mx-2">
+                        <!-- Player3 -->
+                        <!-- <div class="col-md-auto mx-2">
                             <div class="row justify-content-center">
                                 <div class="col-md-8">
-                                    <h2 class="text-white text-center">AI-1</h2>
+                                    <h2 class="text-white text-center">AI-3</h2>
                                 </div>
                                 <div class="w-100"></div>
                                 <div>
@@ -149,7 +157,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
                     </div>
         
@@ -157,47 +165,51 @@
 
                 <!-- アクション選択一覧 & ベット選択 -->
                 <div class="container mt-5">
-                    <div class="row justify-content-center d-none">
-                        <button class="btn btn-light col-md-1 mx-1">Surrender</button>
-                        <button class="btn btn-primary col-md-1 mx-1">Stand</button>
-                        <button class="btn btn-warning col-md-1 mx-1">Hit</button>
-                        <button class="btn btn-danger col-md-1 mx-1">Double</button>
+                    <div class="d-none" id="action">
+                        <div class="row justify-content-center">
+                            <button class="btn btn-light col-md-1 mx-1">Surrender</button>
+                            <button class="btn btn-primary col-md-1 mx-1">Stand</button>
+                            <button class="btn btn-warning col-md-1 mx-1">Hit</button>
+                            <button class="btn btn-danger col-md-1 mx-1">Double</button>
+                        </div>
                     </div>
 
-                    <div class="row justify-content-center">
-                        <div class="col-md-3 justify-content-center form-inline">
-                            <button class="btn col-md-2 btn-danger minus-5" id="5-minus">-</button>
-                            <input type="text" class="form-control col-md-3 text-center" value="0" id="bet-5" min="0">
-                            <button class="btn col-md-2 btn-primary plus-5">+</button>
-                            <div class="w-100"></div>
-                            <label for="bet-5" class="text-white">5</label>
-                        </div>
+                    <div class="d-block" id="betting">
+                        <div class="row justify-content-center">
+                            <div class="col-md-3 justify-content-center form-inline">
+                                <button class="btn col-md-2 btn-danger minus">-</button>
+                                <input type="text" class="form-control col-md-3 text-center bet" value="0" min="0">
+                                <button class="btn col-md-2 btn-primary plus">+</button>
+                                <div class="w-100"></div>
+                                <label for="bet-5" class="text-white">5</label>
+                            </div>
 
-                        <div class="col-md-3 justify-content-center form-inline">
-                            <button class="btn col-md-2 btn-danger minus-10">-</button>
-                            <input type="text" class="form-control col-md-3 text-center" value="0" id="bet-10" min="0">
-                            <button class="btn col-md-2 btn-primary plus-10">+</button>
-                            <div class="w-100"></div>
-                            <label for="bet-10" class="text-white">10</label>
-                        </div>
+                            <div class="col-md-3 justify-content-center form-inline">
+                                <button class="btn col-md-2 btn-danger minus">-</button>
+                                <input type="text" class="form-control col-md-3 text-center bet" value="0" min="0">
+                                <button class="btn col-md-2 btn-primary plus">+</button>
+                                <div class="w-100"></div>
+                                <label for="bet-10" class="text-white">10</label>
+                            </div>
 
-                        <div class="col-md-3 justify-content-center form-inline">
-                            <button class="btn col-md-2 btn-danger minus-20">-</button>
-                            <input type="text" class="form-control col-md-3 text-center" value="0" id="bet-20" min="0">
-                            <button class="btn col-md-2 btn-primary plus-20">+</button>
-                            <div class="w-100"></div>
-                            <label for="bet-20" class="text-white">20</label>
-                        </div>
+                            <div class="col-md-3 justify-content-center form-inline">
+                                <button class="btn col-md-2 btn-danger minus">-</button>
+                                <input type="text" class="form-control col-md-3 text-center bet" value="0" min="0">
+                                <button class="btn col-md-2 btn-primary plus">+</button>
+                                <div class="w-100"></div>
+                                <label for="bet-20" class="text-white">20</label>
+                            </div>
 
-                        <div class="col-md-3 justify-content-center form-inline">
-                            <button class="btn col-md-2 btn-danger minus-50">-</button>
-                            <input type="text" class="form-control col-md-3 text-center" value="0" id="bet-=50" min="0">
-                            <button class="btn col-md-2 btn-primary">+</button>
+                            <div class="col-md-3 justify-content-center form-inline">
+                                <button class="btn col-md-2 btn-danger minus">-</button>
+                                <input type="text" class="form-control col-md-3 text-center bet" value="0" min="0">
+                                <button class="btn col-md-2 btn-primary plus">+</button>
+                                <div class="w-100"></div>
+                                <label for="bet-50" class="text-white">50</label>
+                            </div>
                             <div class="w-100"></div>
-                            <label for="bet-50" class="text-white plus-50">50</label>
+                            <button class="btn btn-warning col-md-4 mt-2" id="bet-btn">Bet</button>
                         </div>
-                        <div class="w-100"></div>
-                        <button class="btn btn-warning col-md-4 mt-2">Bet</button>
                     </div>
                 </div>
 
