@@ -293,7 +293,7 @@ class Table {
         this.players.push(new Player("AI-1", "ai", this.gameType));
         this.players.push(new Player(name, type, this.gameType));
         this.players.push(new Player("AI-3", "ai", this.gameType));
-        this.turnCounter = 0;
+        this.playerNumber = 0;
         this.gamePhase = "betting";
         this.gameRound = 1;
 
@@ -383,7 +383,7 @@ class Table {
        return Player : 現在のプレイヤー
     */
     getTurnPlayer() {
-        return this.players[this.turnCounter];
+        return this.players[this.playerNumber];
     }
 
     /*
@@ -392,20 +392,16 @@ class Table {
     */
     haveTurn(userData) {
         if (this.gamePhase === "betting") {
-            // console.log("start betting : ", this.getTurnPlayer());
             this.evaluateMove(this.getTurnPlayer());
-            this.turnCounter++;
 
             if (this.onLastPlayer()) {
-                // 先頭に戻す
-                this.turnCounter = 0;
-
-                // カードを配る
+                this.playerNumber = 0;
                 this.blackjackAssignPlayerHands();
-
-                // gamePhaseを変更
                 this.gamePhase = "dealCards";
+                return;
             }
+
+            this.playerNumber++;
         }
         else if (this.gamePhase === "dealCards") {
             this.gamePhase = "acting";
@@ -413,18 +409,20 @@ class Table {
         else if (this.gamePhase === "acting") {
             // console.log("start acting : ", this.getTurnPlayer());
             
-            // 全Playerのactingが終了した場合
-            if (this.allPlayerActionsResolved()) {
-                if (this.house.gameStatus === "roundOver") {
-                    this.turnCounter = 0;
-                    this.gamePhase = "evaluating";
-                } else {
-                    this.evaluateMove(this.house);
-                }
-            } else {
-                this.turnCounter += (this.getTurnPlayer().gameStatus === "roundOver") ? 1 : 0;
+            if (!this.allPlayerActionsResolved()) {
+                this.playerNumber += (this.getTurnPlayer().gameStatus === "roundOver") ? 1 : 0;
                 this.evaluateMove(this.getTurnPlayer());
+                return;
             }
+
+            // playerのactionが全て終了した場合、ディーラーがactionを行う 
+            if (this.house.gameStatus === "roundOver") {
+                this.playerNumber = 0;
+                this.gamePhase = "evaluating";
+                return;
+            }
+
+            this.evaluateMove(this.house);
         }
         else if (this.gamePhase === "evaluating") {
             this.evaluateResults();
@@ -441,14 +439,14 @@ class Table {
         return Boolean : テーブルがプレイヤー配列の最初のプレイヤーにフォーカスされている場合はtrue、そうでない場合はfalseを返します。
     */
     onFirstPlayer() {
-        return this.turnCounter === 0;
+        return this.playerNumber === 0;
     }
 
     /*
         return Boolean : テーブルがプレイヤー配列の最後のプレイヤーにフォーカスされている場合はtrue、そうでない場合はfalseを返します。
     */
     onLastPlayer() {
-        return this.turnCounter === this.players.length;
+        return this.playerNumber === this.players.length - 1;
     }
     
     /*
@@ -533,8 +531,8 @@ document.getElementById("start-btn").addEventListener("click", () => {
 
     // 画面にプレイヤーを表示
     // TODO: Tableインスタンスからプレイヤーの名前の配列を取得したい
-    ["AI-1", userName, "AI-3"].forEach((it) => {
-        createUserHandDiv(it);
+    table.players.forEach((player) => {
+        createUserHandDiv(player);
     });
 
     // 画面を切り替える
@@ -560,8 +558,8 @@ const renderTable = async (table) => {
         });
 
         document.getElementById("house-status").innerHTML = "Waiting for actions";
-
         createCardDiv(table.house.name, table.house.hand[0]);
+        createCardDiv(table.house.name, table.house.hand[1], false);
     } else if (table.gamePhase === "acting") {
         const onPlayer = table.getTurnPlayer();
         if (onPlayer.gameStatus !== "roundOver") {
@@ -572,9 +570,10 @@ const renderTable = async (table) => {
                         createCardDiv(onPlayer.name, it);
                     });
                     resolve();
-                }, 1000));
+                }, 3000));
             }
         }
+        document.getElementById(`${onPlayer.name}-status`).innerHTML = `${onPlayer.gameStatus}`;
 
         if (table.allPlayerActionsResolved()) {
             await new Promise(resolve => setTimeout(() => {
@@ -650,39 +649,51 @@ const displayBlock = (element) => {
 
 /**
  * プレイヤーの手札、ステータスをusers-handの要素に追加する
- * @param name 
+ * @param player.name 
  */
 // TODO: nameではなくPlayerインスタンスを使用する
- const createUserHandDiv = (name) => {
+const createUserHandDiv = (player) => {
     const usersHandDiv = document.getElementById("users-hand");
     usersHandDiv.innerHTML +=
     `
     <div class="col-md-auto mx-2">
         <div class="row justify-content-center">
             <div class="col-md-8">
-                <h2 class="text-white text-center">${name}</h2>
+                <h2 class="text-white text-center">${player.name}</h2>
             </div>
             <div class="w-100"></div>
             <div>
-                <p class="text-white ${name}">Status:<span>bet</span> Bet:<span>10</span> Chip:<span>100</span></p>
+                <p class="text-white">Status:<span id="${player.name}-status">${player.gameStatus}</span> Bet:<span id="${player.name}-bet">${player.bet}</span> Chip:<span id="${player.name}-chip">${player.chips}</span></p>
             </div>
         </div>
     
-        <div class="row justify-content-center" id="${name}-hand"></div>
+        <div class="row justify-content-center" id="${player.name}-hand"></div>
     `;
 };
 
-const createCardDiv = (name, card) => {
+const createCardDiv = (name, card, isShow = true) => {
     const userHandDiv = document.getElementById(`${name}-hand`);
-    userHandDiv.innerHTML +=
-    `
-    <div class="card mx-1" style="width: 5rem; height: 7rem;">
-        <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/${config.suitsName[card.suit]}.png" alt="Card image cap">
-        <div class="card-body">
-            <h2 class="card-title text-center">${card.rank}</h2>
+    if (isShow) {
+        userHandDiv.innerHTML +=
+        `
+        <div class="card mx-1" style="width: 5rem; height: 7rem;">
+            <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/${config.suitsName[card.suit]}.png" alt="Card image cap">
+            <div class="card-body">
+                <h2 class="card-title text-center">${card.rank}</h2>
+            </div>
         </div>
-    </div>
-    `;
+        `;
+    } else {
+        userHandDiv.innerHTML +=
+        `
+        <div class="card mx-1" style="width: 5rem; height: 7rem;">
+            <div class="card-body">
+                <h2 class="card-title text-center">?</h2>
+            </div>
+        </div>
+        `;
+        
+    }
 };
 
 const resetCardDiv = (name) => {
