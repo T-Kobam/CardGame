@@ -10,6 +10,7 @@ config = {
     "game": document.getElementById("game"),
     "action": document.getElementById("action"),
     "betting": document.getElementById("betting"),
+    "nextGame": document.getElementById("next-game"),
     "suitsName": { "H": "heart", "D": "diamond", "C": "club", "S": "spade" },
 }
 
@@ -254,10 +255,12 @@ class Player {
     getHandScore() {
         let score = 0;
         let hasAce = false;
-        for (const card of this.hand) {
-            if (card.rank === "A") hasAce = true;
+        this.hand.forEach(card => {
+            if (card.rank === "A") {
+                hasAce = true;
+            }
             score += card.getRankNumber();
-        }
+        });
 
         return (score > 21 && hasAce) ? score - 10 : score;
     }
@@ -678,26 +681,23 @@ const renderTable2 = async (table) => {
 
         if (table.allPlayerActionsResolved()) {
             const numOfCards = table.house.hand.length;
+            await sleepSec(0.8);
             if (numOfCards === 2) {
                 resetCardDiv(table.house.name);
                 table.house.hand.forEach((it) => createCardDiv(table.house.name, it));    
             }
             else if (table.house.gameStatus !== "roundOver") {
-                await sleepSec(0.8);
                 createCardDiv(table.house.name, table.house.hand[numOfCards - 1]);
-            }
+                }
         }
         changeStatus(onPlayer);
     }
     else if (table.gamePhase === "evaluating") {
-        table.players.forEach((player) => {
-            changeStatus(player);
-        });
+        await table.haveTurn2();
+        table.players.forEach(player => changeStatus(player));
     }
     else if (table.gamePhase === "roundOver") {
-        table.players.forEach((player) => {
-            changeStatus(player);
-        });
+        displayBlock(config.nextGame);
         return;
     }
 
