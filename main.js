@@ -132,7 +132,7 @@ class Player {
         // typeがAIの場合、houseの情報を受け取る
         // ベーシックストラテジーに基づいた戦略を取る
         if (this.type === "ai") {
-            await sleepSec(3);
+            await sleepSec(1);
             if (this.gameStatus === "betting") {
                 return new GameDecision("bet", 50);
             }
@@ -441,6 +441,52 @@ class Table {
         return;
     }
 
+    async haveTurn2(userData) {
+        if (this.gamePhase === "betting") {
+            await this.evaluateMove(userData);
+
+            if (this.onLastPlayer()) {
+                this.playerNumber = 0;
+                this.blackjackAssignPlayerHands();
+                this.gamePhase = "dealCards";
+                return;
+            }
+
+            this.playerNumber++;
+        }
+        else if (this.gamePhase === "dealCards") {
+            this.gamePhase = "acting";
+        }
+        else if (this.gamePhase === "acting") {
+            // console.log("start acting : ", this.getTurnPlayer());
+            if (!this.allPlayerActionsResolved()) {
+                await this.evaluateMove(userData);
+                this.playerNumber += (userData.gameStatus === "roundOver") ? 1 : 0;
+                if (this.playerNumber >= this.players.length) {
+                    this.playerNumber = 0;
+                }
+                return;
+            }
+
+            // playerのactionが全て終了した場合、ディーラーがactionを行う 
+            if (this.house.gameStatus === "roundOver") {
+                this.gamePhase = "evaluating";
+                return;
+            }
+
+            await this.evaluateMove(this.house);
+        }
+        else if (this.gamePhase === "evaluating") {
+            this.evaluateResults();
+            this.blackjackEvaluateAndGetRoundResults();
+            this.blackjackClearPlayerHandsAndBets();
+            this.gameRound++;
+            this.gamePhase = "roundOver"
+        }
+
+        return;
+    }
+
     /*
         return Boolean : テーブルがプレイヤー配列の最初のプレイヤーにフォーカスされている場合はtrue、そうでない場合はfalseを返します。
     */
@@ -544,7 +590,8 @@ document.getElementById("start-btn").addEventListener("click", () => {
         displayNone(config.betting);
     }
 
-    renderTable(table);
+    // renderTable(table);
+    renderTable2(table);
 });
 
 const renderTable = async (table) => {
@@ -593,6 +640,69 @@ const renderTable = async (table) => {
 
     await table.haveTurn();
     renderTable(table);
+};
+
+const renderTable2 = async (table) => {
+    const onPlayer = table.getTurnPlayer();
+
+    if (table.gamePhase === "betting") {
+        await table.haveTurn2(onPlayer);
+        changeStatus(onPlayer);
+    }
+    else if (table.gamePhase === "dealCards") {
+        document.getElementById("house-status").innerHTML = "Waiting for actions";
+
+        // forEachはPromiseを持たないためfor loopを使用
+        for(const player of table.players) {
+            await sleepSec(0.8);
+            for (const card of player.hand) {
+                await sleepSec(0.3);
+                createCardDiv(player.name, card);
+            }
+        }
+
+        await sleepSec(0.8);
+        createCardDiv(table.house.name, table.house.hand[0]);
+        await sleepSec(0.3);
+        createCardDiv(table.house.name, table.house.hand[1], false);
+
+        await table.haveTurn2();
+    } 
+    else if (table.gamePhase === "acting") {
+        await table.haveTurn2(onPlayer);
+
+        if (onPlayer.gameStatus !== "roundOver") {
+            await sleepSec(0.5);
+            createCardDiv(onPlayer.name, onPlayer.hand[onPlayer.hand.length - 1]);
+        }
+
+        if (table.allPlayerActionsResolved()) {
+            const numOfCards = table.house.hand.length;
+            if (numOfCards === 2) {
+                resetCardDiv(table.house.name);
+                table.house.hand.forEach((it) => createCardDiv(table.house.name, it));    
+            }
+            else if (table.house.gameStatus !== "roundOver") {
+                await sleepSec(0.8);
+                createCardDiv(table.house.name, table.house.hand[numOfCards - 1]);
+            }
+        }
+        changeStatus(onPlayer);
+    }
+    else if (table.gamePhase === "evaluating") {
+        table.players.forEach((player) => {
+            changeStatus(player);
+        });
+    }
+    else if (table.gamePhase === "roundOver") {
+        table.players.forEach((player) => {
+            changeStatus(player);
+        });
+        return;
+    }
+
+    //await table.haveTurn2();
+    renderTable2(table);
 };
 
 // ベットの枚数調整ボタン
