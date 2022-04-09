@@ -13,6 +13,10 @@ config = {
     "suitsName": { "H": "heart", "D": "diamond", "C": "club", "S": "spade" },
 }
 
+const sleepSec = async (second) => {
+    await new Promise(resolve => setTimeout(resolve, second * 1000));
+}
+
 /**
  * カードClass
  * カード1枚の状態を決定する
@@ -124,10 +128,11 @@ class Player {
         プレイヤーのタイプ、ハンド、チップの状態を読み取り、GameDecisionを返します。
         パラメータにuserData使うことによって、プレイヤーが「user」の場合、このメソッドにユーザーの情報を渡すことができますし、プレイヤーが 「ai」の場合、 userDataがデフォルトとしてnullを使います。
     */
-    promptPlayer(userData) {
+    async promptPlayer(userData) {
         // typeがAIの場合、houseの情報を受け取る
         // ベーシックストラテジーに基づいた戦略を取る
         if (this.type === "ai") {
+            await sleepSec(3);
             if (this.gameStatus === "betting") {
                 return new GameDecision("bet", 50);
             }
@@ -236,6 +241,7 @@ class Player {
 
         // houseの場合
         if (this.type === "house") {
+            await sleepSec(2);
             return this.getHandScore() >= 17 ? new GameDecision("stand", 0) : new GameDecision("hit", 0);
         }
     }
@@ -308,9 +314,9 @@ class Table {
         EX:
         プレイヤーが「ヒット」し、手札が21以上の場合、gameStatusを「バスト」に設定し、チップからベットを引きます。
     */
-    evaluateMove(player) {
+    async evaluateMove(player) {
         // Playerの処理判断
-        const decision = player.promptPlayer(this.house);
+        const decision = await player.promptPlayer(this.house);
         
         // Playerがbettingの状態の場合
         if (player.gameStatus === "betting") {
@@ -334,6 +340,8 @@ class Table {
                 }
             }
         }
+
+        return;
     }
 
     /*
@@ -355,9 +363,7 @@ class Table {
     blackjackAssignPlayerHands() {
         this.deck.shuffle();
         for (let i = 0; i < 2; i++) {
-            for (const player of this.players) {
-                player.hand.push(this.deck.drawOne());
-            }
+            this.players.forEach((player) => player.hand.push(this.deck.drawOne()));
             this.house.hand.push(this.deck.drawOne());
         }
     }
@@ -370,11 +376,11 @@ class Table {
     * 全プレイヤーの状態を更新
     */
     blackjackClearPlayerHandsAndBets() {
-        for (const player of this.players) {
+        this.players.forEach((player) => {
             player.hand = [];
             player.bet = 0;
             player.gameStatus = "betting";
-        }
+        });
         this.house.hand = [];
         this.deck.resetDeck();
     }
@@ -390,9 +396,9 @@ class Table {
        Number userData : テーブルモデルの外部から渡されるデータです。 
        return Null : このメソッドはテーブルの状態を更新するだけで、値を返しません。
     */
-    haveTurn(userData) {
+    async haveTurn(userData) {
         if (this.gamePhase === "betting") {
-            this.evaluateMove(this.getTurnPlayer());
+            await this.evaluateMove(this.getTurnPlayer());
 
             if (this.onLastPlayer()) {
                 this.playerNumber = 0;
@@ -411,7 +417,7 @@ class Table {
             
             if (!this.allPlayerActionsResolved()) {
                 this.playerNumber += (this.getTurnPlayer().gameStatus === "roundOver") ? 1 : 0;
-                this.evaluateMove(this.getTurnPlayer());
+                await this.evaluateMove(this.getTurnPlayer());
                 return;
             }
 
@@ -453,12 +459,7 @@ class Table {
         全てのプレイヤーがセット{'broken', 'bust', 'stand', 'surrender'}のgameStatusを持っていればtrueを返し、持っていなければfalseを返します。
     */
     allPlayerActionsResolved() {
-        for (let player of this.players) {
-            if (player.gameStatus != "roundOver") {
-                return false;
-            }
-        }
-        return true;
+        return this.players.every((player) => player.gameStatus === "roundOver");
     }
 
     // 自作: 結果の評価
@@ -555,6 +556,7 @@ const renderTable = async (table) => {
                     createCardDiv(player.name, it)
                 })
             }
+            changeStatus(player);
         });
 
         document.getElementById("house-status").innerHTML = "Waiting for actions";
@@ -564,35 +566,32 @@ const renderTable = async (table) => {
         const onPlayer = table.getTurnPlayer();
         if (onPlayer.gameStatus !== "roundOver") {
             if (onPlayer.type === "ai") {
-                await new Promise(resolve => setTimeout(() => {
-                    resetCardDiv(onPlayer.name);
-                    onPlayer.hand.forEach((it) => {
-                        createCardDiv(onPlayer.name, it);
-                    });
-                    resolve();
-                }, 3000));
+                resetCardDiv(onPlayer.name);
+                onPlayer.hand.forEach((it) => createCardDiv(onPlayer.name, it));
             }
         }
-        document.getElementById(`${onPlayer.name}-status`).innerHTML = `${onPlayer.gameStatus}`;
 
         if (table.allPlayerActionsResolved()) {
-            await new Promise(resolve => setTimeout(() => {
-                resetCardDiv(table.house.name);
-                table.house.hand.forEach((it) => {
-                    createCardDiv(table.house.name, it);
-                });
-                resolve();
-            }, 2000));
+            await sleepSec(1.5);
+            resetCardDiv(table.house.name);
+            table.house.hand.forEach((it) => createCardDiv(table.house.name, it));
         }
+
+        changeStatus(onPlayer);
     }
     else if (table.gamePhase === "evaluating") {
-        console.log("evaluating");
+        table.players.forEach((player) => {
+            changeStatus(player);
+        });
     }
     else if (table.gamePhase === "roundOver") {
+        table.players.forEach((player) => {
+            changeStatus(player);
+        });
         return;
     }
 
-    table.haveTurn();
+    await table.haveTurn();
     renderTable(table);
 };
 
@@ -663,7 +662,7 @@ const createUserHandDiv = (player) => {
             </div>
             <div class="w-100"></div>
             <div>
-                <p class="text-white">Status:<span id="${player.name}-status">${player.gameStatus}</span> Bet:<span id="${player.name}-bet">${player.bet}</span> Chip:<span id="${player.name}-chip">${player.chips}</span></p>
+                <p class="text-white">Status: <span id="${player.name}-status">${player.gameStatus}</span> Bet: <span id="${player.name}-bet">${player.bet}</span> Chip: <span id="${player.name}-chips">${player.chips}</span></p>
             </div>
         </div>
     
@@ -698,4 +697,10 @@ const createCardDiv = (name, card, isShow = true) => {
 
 const resetCardDiv = (name) => {
     document.getElementById(`${name}-hand`).innerHTML = "";
+}
+
+const changeStatus = (player) => {
+    document.getElementById(`${player.name}-status`).innerHTML = `${player.gameStatus}`;
+    document.getElementById(`${player.name}-bet`).innerHTML = `${player.bet}`;
+    document.getElementById(`${player.name}-chips`).innerHTML = `${player.chips}`;
 }
