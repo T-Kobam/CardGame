@@ -240,10 +240,12 @@ class Player {
             else return new GameDecision("hit", 0);
         }
 
-        // houseの場合
+        if (this.type === "user") {
+            return new GameDecision(this.gameStatus, this.bet);
+        }
+
         if (this.type === "house") {
             await sleepSec(2);
-            console.log(this.getHandScore());
             return (this.getHandScore() >= 17) ? new GameDecision("stand", 0) : new GameDecision("hit", 0);
         }
     }
@@ -498,19 +500,6 @@ class Table {
 }
 
 // ゲーム開始
-// ブラックジャックを選択
-// let table1 = new Table("blackjack", "AI-2", "ai");
-
-// for (let i = 0; i < 10; i++) {
-//     table1.gamePhase = 'betting';
-//     while(table1.gamePhase != 'roundOver'){
-//         table1.haveTurn();
-//     }
-// }
-// // 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
-// console.log(table1.resultsLog);
-
-
 // ボタンが押下されたことによるリスナー作成
 
 // メイン画面
@@ -518,7 +507,7 @@ class Table {
 // ただし、名前が入力されていない場合はエラー表示
 // TODO: プレイヤーの人数を可変にする
 let table;
-document.getElementById("start-btn").addEventListener("click", () => {
+document.getElementById("start-btn").addEventListener("click", async () => {
     const gameType = document.getElementById("game-type").value;
     if (gameType !== "blackjack") {
         alert("選択されたゲームは現在ご利用できません");
@@ -538,9 +527,7 @@ document.getElementById("start-btn").addEventListener("click", () => {
 
     // 画面にプレイヤーを表示
     // TODO: Tableインスタンスからプレイヤーの名前の配列を取得したい
-    table.players.forEach((player) => {
-        createUserHandDiv(player);
-    });
+    table.players.forEach(player => createUserHandDiv(player));
 
     // 画面を切り替える
     displayNone(config.menu);
@@ -548,9 +535,8 @@ document.getElementById("start-btn").addEventListener("click", () => {
 
     if (userType === "ai") { 
         displayNone(config.betting);
+        await renderTable(table);
     }
-
-    renderTable(table);
 });
 
 const renderTable = async (table) => {
@@ -559,6 +545,10 @@ const renderTable = async (table) => {
     if (table.gamePhase === "betting") {
         await table.haveTurn(onPlayer);
         changeStatus(onPlayer);
+
+        // if (table.players.every(player => player.type === "ai")) {
+        //     await renderTable(table);
+        // }
     }
     else if (table.gamePhase === "dealCards") {
         document.getElementById("house-status").innerHTML = "Waiting for actions";
@@ -578,6 +568,10 @@ const renderTable = async (table) => {
         createCardDiv(table.house.name, table.house.hand[1], false);
 
         await table.haveTurn();
+
+        // if (table.players.every(player => player.type === "ai")) {
+        //     await renderTable(table);
+        // }
     } 
     else if (table.gamePhase === "acting") {
         await table.haveTurn(onPlayer);
@@ -603,7 +597,7 @@ const renderTable = async (table) => {
         return;
     }
 
-    renderTable(table);
+    await renderTable(table);
 };
 
 // ベットの枚数調整ボタン
@@ -622,7 +616,7 @@ for (let i = 0; i < betValue.length; i++) {
 }
 
 // Betボタンが押下されたことによるリスナー作成
-document.getElementById("bet-btn").addEventListener("click", () => {
+document.getElementById("bet-btn").addEventListener("click", async () => {
     let totalBet = 0;
     [5, 10, 20, 50].forEach((num, index) => {
         totalBet += betValue[index].value * num;
@@ -635,6 +629,10 @@ document.getElementById("bet-btn").addEventListener("click", () => {
 
     displayNone(config.betting);
     displayBlock(config.action);
+
+    table.players[1].bet = totalBet;
+
+    // await renderTable(table);
 });
 
 /**
