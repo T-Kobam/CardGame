@@ -330,7 +330,7 @@ class Table {
             player.gameStatus = "acting";
         }
         // Playerがactingの状態の場合(hit, double, stand, surrender)
-        else if (player.gameStatus === "acting") {
+        else if (player.gameStatus === "acting" || player.type === "user") {
             if (decision.action === "stand") {
                 player.gameStatus = "roundOver";
             }
@@ -535,8 +535,8 @@ document.getElementById("start-btn").addEventListener("click", async () => {
 
     if (userType === "ai") { 
         displayNone(config.betting);
-        await renderTable(table);
     }
+    await renderTable(table);
 });
 
 const renderTable = async (table) => {
@@ -546,9 +546,9 @@ const renderTable = async (table) => {
         await table.haveTurn(onPlayer);
         changeStatus(onPlayer);
 
-        // if (table.players.every(player => player.type === "ai")) {
-        //     await renderTable(table);
-        // }
+        if (table.getTurnPlayer().type === "ai") {
+            await renderTable(table);
+        }
     }
     else if (table.gamePhase === "dealCards") {
         document.getElementById("house-status").innerHTML = "Waiting for actions";
@@ -568,10 +568,7 @@ const renderTable = async (table) => {
         createCardDiv(table.house.name, table.house.hand[1], false);
 
         await table.haveTurn();
-
-        // if (table.players.every(player => player.type === "ai")) {
-        //     await renderTable(table);
-        // }
+        await renderTable(table);
     } 
     else if (table.gamePhase === "acting") {
         await table.haveTurn(onPlayer);
@@ -587,17 +584,22 @@ const renderTable = async (table) => {
             table.house.hand.forEach((it) => createCardDiv(table.house.name, it));    
         }
         changeStatus(onPlayer);
+
+        if (table.getTurnPlayer().type === "ai") {
+            await renderTable(table);
+        }
     }
     else if (table.gamePhase === "evaluating") {
         await table.haveTurn();
         table.players.forEach(player => changeStatus(player));
+        await renderTable(table);
     }
     else if (table.gamePhase === "roundOver") {
         displayBlock(config.nextGame);
         return;
     }
 
-    await renderTable(table);
+    // await renderTable(table);
 };
 
 // ベットの枚数調整ボタン
@@ -632,7 +634,7 @@ document.getElementById("bet-btn").addEventListener("click", async () => {
 
     table.players[1].bet = totalBet;
 
-    // await renderTable(table);
+    await renderTable(table);
 });
 
 /**
@@ -719,3 +721,8 @@ config.nextGame.addEventListener("click", () => {
     table.gamePhase = "betting";
     renderTable(table);
 });
+
+document.getElementById("stand").addEventListener("click", async () => {
+    table.players[1].gameStatus = "stand";
+    await renderTable(table);
+})
