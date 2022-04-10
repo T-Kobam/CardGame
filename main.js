@@ -552,6 +552,7 @@ const renderTable = async (table) => {
         if (table.getTurnPlayer().type === "ai") {
             await renderTable(table);
         } else {
+            document.getElementById(`${table.getTurnPlayer().name}-name`).classList.add("border", "border-warning");
             displayBlock(config.betting);
         }
     }
@@ -605,6 +606,7 @@ const renderTable = async (table) => {
             displayNone(config.action);
             await renderTable(table);
         } else {
+            document.getElementById(`${table.getTurnPlayer().name}-name`).classList.add("border", "border-warning");
             displayBlock(config.action);
         }
     }
