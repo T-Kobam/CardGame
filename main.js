@@ -1,6 +1,21 @@
+// 2/15 カードを配って、意思決定を行い、ラウンドを終了する流れまで実装
+// ただし、詳細な動きは未実装。流れだけを作れた
+
 config = {
     "suits": ["H", "D", "C", "S"], // カードの絵柄
     "ranks": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"], // カードの数字
+
+    // html関連
+    "menu": document.getElementById("menu"),
+    "game": document.getElementById("game"),
+    "action": document.getElementById("action"),
+    "betting": document.getElementById("betting"),
+    "nextGame": document.getElementById("next-game"),
+    "suitsName": { "H": "heart", "D": "diamond", "C": "club", "S": "spade" },
+}
+
+const sleepSec = async (second) => {
+    await new Promise(resolve => setTimeout(resolve, second * 1000));
 }
 
 /**
@@ -38,7 +53,7 @@ class Card {
 class Deck {
    /**
     * ゲームタイプの指定
-    * @param {*} gameType {"blackjack"}から選択
+    * @param {*} gameType {"blackjack"}から選択(ポーカー追加予定)
     */
     constructor(gameType) {
         this.gameType = gameType;   // このデッキが扱うゲームタイプ
@@ -103,7 +118,7 @@ class Player {
 
         // プレイヤーのゲームの状態やアクションを表します。
         // ブラックジャックの場合、最初の状態は「betting」です。
-        this.gameStatus = 'betting';
+        this.gameStatus = (this.type === "house") ? "acting" : "betting";
     }
 
     /*
@@ -114,33 +129,145 @@ class Player {
         プレイヤーのタイプ、ハンド、チップの状態を読み取り、GameDecisionを返します。
         パラメータにuserData使うことによって、プレイヤーが「user」の場合、このメソッドにユーザーの情報を渡すことができますし、プレイヤーが 「ai」の場合、 userDataがデフォルトとしてnullを使います。
     */
-    promptPlayer(userData) {
+    async promptPlayer(userData) {
         // typeがAIの場合、houseの情報を受け取る
         // ベーシックストラテジーに基づいた戦略を取る
         if (this.type === "ai") {
-            if (this.bet === 0) {
+            await sleepSec(1);
+            if (this.gameStatus === "betting") {
                 return new GameDecision("bet", 50);
             }
+            
+            // houseのオープンカード
+            const openCard = userData.hand[0];
 
-            if (this.getHandScore() <= 15) {
+            // 2枚とも同じsuitか(スプリットケース)
+            if (this.hand[0].rank === this.hand[1].rank) {
+                // A, 2, 3, 4, 6, 7, 8, 9の場合
+                if (["A", "2", "3", "4", "6", "7", "8", "9"].includes(this.hand[0].rank)) {
+                    return new GameDecision("hit", 0);
+                }
+                // ５の場合 
+                else if (this.hand[0].rank === "5") {
+                    if (["A", "10", "J", "Q", "K"].includes(openCard)) {
+                        return new GameDecision("hit", 0)
+                    } else {
+                        return new GameDecision("double", this.bet)
+                    }
+                } 
+                // 9の場合
+                else if (this.hand[0].rank === "9") {
+                    if (["A", "7", "10", "J", "Q", "K"].includes(openCard)) {
+                        return new GameDecision("stand", 0);
+                    } else {
+                        return new GameDecision("hit", 0);
+                    }
+                } 
+                // 10の場合
+                else {
+                    return new GameDecision("stand", 0);
+                }
+            }
+            // Aceを含んでいるか(ソフトハンドケース)
+            if (this.hand.some(card => card.rank === "A")) {
+                // 2, 3の場合
+                if (this.hand.some(card => ["2", "3"].includes(card.rank))) {
+                    if (["5", "6"].includes(openCard)) {
+                        return new GameDecision("double", this.bet);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                // 4, 5の場合
+                else if (this.hand.some(card => ["4", "5"].includes(card.rank))) {
+                    if (["3", "4", "5", "6"].includes(openCard)) {
+                        return new GameDecision("double", this.bet);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                // 6の場合
+                else if (this.hand.some(card => card.rank === "6")) {
+                    if (["3", "4", "5", "6"].includes(openCard)) {
+                        return new GameDecision("double", this.bet);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                // 7の場合
+                else if (this.hand.some(card => card.rank === "7")) {
+                    if (["3", "4", "5", "6"].includes(openCard)) {
+                        return new GameDecision("hit", 0);
+                    }
+                    else if (["2", "7", "8"].includes(openCard)) {
+                        return new GameDecision("stand", 0);
+                    }
+                    else {
+                        return new GameDecision("hit", 0);
+                    }
+                }
+                else {
+                    return new GameDecision("stand", 0);
+                }
+
+            }
+            // ハードハンドケース
+            if (this.getHandScore() >= 17) return new GameDecision("stand", 0);
+            else if (this.getHandScore() <= 8) return new GameDecision("hit", 0);
+            else if (this.getHandScore() >= 13) {
+                if (["2", "3", "4", "5", "6"].includes(openCard)) return new GameDecision("stand", 0);
                 return new GameDecision("hit", 0);
             }
-            return new GameDecision("stand", 0);
+            else if (this.getHandScore() === 12) {
+                if (["4", "5", "6"].includes(openCard)) return new GameDecision("stand", 0);
+                else return new GameDecision("hit", 0);
+            }
+            else if (this.getHandScore() === 11) {
+                if (openCard === "A") return new GameDecision("hit", 0);
+                else return new GameDecision("double", this.bet);
+            }
+            else if (this.getHandScore() === 10) {
+                if (["A", "10", "J", "Q", "K"].includes(openCard)) return new GameDecision("hit", 0);
+                else return new GameDecision("double", this.bet);
+            }
+            else if (this.getHandScore() === 9) {
+                if (["3", "4", "5", "6"].includes(openCard)) return new GameDecision("double", this.bet);
+                else return new GameDecision("hit", 0);
+            }
+            else return new GameDecision("hit", 0);
+        }
+
+        if (this.type === "user") {
+            let bet = this.bet;
+            if (this.gameStatus === "hit") {
+                bet = 0;
+            }
+            return new GameDecision(this.gameStatus, bet);
+        }
+
+        if (this.type === "house") {
+            await sleepSec(2);
+            return (this.getHandScore() >= 17) ? new GameDecision("stand", 0) : new GameDecision("hit", 0);
         }
     }
 
-    /*
-       return Number : 手札の合計
-
-       合計が21を超える場合、手札の各エースについて、合計が21以下になるまで10を引きます。
+   /**
+    * 手札の合計を返す
+    * 合計が21を超える場合、手札のAceについて合計が21以下になるまで10を引く
+    * @returns 手札の合計
     */
     getHandScore() {
         let score = 0;
         let hasAce = false;
-        for (const card of this.hand) {
-            if (card.rank === "A") hasAce = true;
+        this.hand.forEach(card => {
+            if (card.rank === "A") {
+                hasAce = true;
+            }
             score += card.getRankNumber();
-        }
+        });
 
         return (score > 21 && hasAce) ? score - 10 : score;
     }
@@ -166,7 +293,7 @@ class Table {
     * @param {*} gameType ゲームタイプ({"blackjack"}から選択)
     * @param {*} betDenominations プレイヤーが選択できるベットの単位(デフォルトは[5,20,50,100])
     */
-    constructor(gameType, betDenominations = [5, 20, 50, 100]) {
+    constructor(gameType, name, type, betDenominations = [5, 20, 50, 100]) {
         this.gameType = gameType;
         this.betDenominations = betDenominations;
         
@@ -179,9 +306,12 @@ class Table {
         
         // プレイヤーをここで初期化してください
         this.house = new Player('house', 'house', this.gameType);
-        this.players.push(new Player("AI1", "ai", this.gameType));
-        this.players.push(new Player("AI2", "ai", this.gameType));
-        this.gamePhase = 'betting'
+        this.players.push(new Player("AI-1", "ai", this.gameType));
+        this.players.push(new Player(name, type, this.gameType));
+        this.players.push(new Player("AI-3", "ai", this.gameType));
+        this.playerNumber = 0;
+        this.gamePhase = "betting";
+        this.gameRound = 1;
 
         // これは各ラウンドの結果をログに記録するための文字列の配列です。
         this.resultsLog = []
@@ -194,18 +324,34 @@ class Table {
         EX:
         プレイヤーが「ヒット」し、手札が21以上の場合、gameStatusを「バスト」に設定し、チップからベットを引きます。
     */
-    evaluateMove(Player) {
-        const decision = Player.promptPlayer();
+    async evaluateMove(player) {
+        // Playerの処理判断
+        const decision = await player.promptPlayer(this.house);
         
-        if (decision.action === "bet") {
-            Player.bet = decision.amount;
-        } else if (decision.action === "hit") {
-            Player.hand.push(this.deck.drawOne());
-            if (Player.getHandScore() > 21) {
-                Player.gameStatus = "bust";
-                Player.chip -= Player.bet;
+        // Playerがbettingの状態の場合
+        if (player.gameStatus === "betting") {
+            player.bet = decision.amount;
+            player.gameStatus = "acting";
+        }
+        // Playerがactingの状態の場合(hit, double, stand, surrender)
+        else if (player.gameStatus === "acting" || player.type === "user") {
+            if (decision.action === "stand") {
+                player.gameStatus = "roundOver";
+            }
+            else if (decision.action === "surrender") {
+                // TODO: 処理
+            }
+            else {
+                player.hand.push(this.deck.drawOne());
+                player.bet += decision.amount;
+                // bustした場合
+                if (player.getHandScore() > 21) {
+                    player.gameStatus = "roundOver";
+                }
             }
         }
+
+        return;
     }
 
     /*
@@ -213,17 +359,21 @@ class Table {
         NOTE: このメソッドの出力は、各ラウンドの終了時にテーブルのresultsLogメンバを更新するために使用されます。
     */
     blackjackEvaluateAndGetRoundResults() {
-        //TODO: ここから挙動をコードしてください。    
+        this.resultsLog.push(
+            `${this.gameRound} Round End: `, 
+            JSON.stringify({ name: this.house.name, hand: this.house.hand, total: this.house.getHandScore() }), 
+            this.players.map((it) => { return JSON.stringify({ name: it.name, winAmount: it.winAmount, chips: it.chips, hand: it.hand, total: it.getHandScore() }); })
+        );
     }
 
-    /*
-       return null : デッキから2枚のカードを手札に加えることで、全プレイヤーの状態を更新します。
-       NOTE: プレイヤーのタイプが「ハウス」の場合は、別の処理を行う必要があります。
+   /**
+    * デッキから2枚のカードを手札に加える
+    * 全プレイヤーの状態を更新する
     */
     blackjackAssignPlayerHands() {
+        this.deck.shuffle();
         for (let i = 0; i < 2; i++) {
-            this.players[0].hand.push(this.deck.drawOne());
-            this.players[1].hand.push(this.deck.drawOne());
+            this.players.forEach((player) => player.hand.push(this.deck.drawOne()));
             this.house.hand.push(this.deck.drawOne());
         }
     }
@@ -231,47 +381,381 @@ class Table {
     /*
        return null : テーブル内のすべてのプレイヤーの状態を更新し、手札を空の配列に、ベットを0に設定します。
     */
+   /**
+    * 全プレイヤーの手札をからの配列に、ベットを0に設定する
+    * 全プレイヤーの状態を更新
+    */
     blackjackClearPlayerHandsAndBets() {
-        for (const player of this.players) {
+        this.players.forEach((player) => {
             player.hand = [];
             player.bet = 0;
-        }
+            player.gameStatus = "betting";
+        });
+        this.house.hand = [];
+        this.house.gameStatus = "betting";
+        this.deck.resetDeck();
     }
     
     /*
        return Player : 現在のプレイヤー
     */
     getTurnPlayer() {
-        return this.players;
+        return this.players[this.playerNumber];
     }
 
     /*
        Number userData : テーブルモデルの外部から渡されるデータです。 
        return Null : このメソッドはテーブルの状態を更新するだけで、値を返しません。
     */
-    haveTurn(userData) {
-        //TODO: ここから挙動をコードしてください。
-        
+    async haveTurn(userData) {
+        if (this.gamePhase === "betting") {
+            await this.evaluateMove(userData);
+
+            if (this.onLastPlayer()) {
+                this.playerNumber = 0;
+                this.blackjackAssignPlayerHands();
+                this.gamePhase = "dealCards";
+                return;
+            }
+
+            this.playerNumber++;
+        }
+        else if (this.gamePhase === "dealCards") {
+            this.gamePhase = "acting";
+        }
+        else if (this.gamePhase === "acting") {
+            // console.log("start acting : ", this.getTurnPlayer());
+            if (!this.allPlayerActionsResolved()) {
+                await this.evaluateMove(userData);
+                this.playerNumber += (userData.gameStatus === "roundOver") ? 1 : 0;
+                if (this.playerNumber >= this.players.length) {
+                    this.playerNumber = 0;
+                }
+                return;
+            }
+
+            // playerのactionが全て終了した場合、ディーラーがactionを行う 
+            if (this.house.gameStatus === "roundOver") {
+                this.gamePhase = "evaluating";
+                return;
+            }
+
+            await this.evaluateMove(this.house);
+        }
+        else if (this.gamePhase === "evaluating") {
+            this.evaluateResults();
+            this.blackjackEvaluateAndGetRoundResults();
+            this.blackjackClearPlayerHandsAndBets();
+            this.gameRound++;
+            this.gamePhase = "roundOver"
+        }
+
+        return;
     }
 
     /*
         return Boolean : テーブルがプレイヤー配列の最初のプレイヤーにフォーカスされている場合はtrue、そうでない場合はfalseを返します。
     */
     onFirstPlayer() {
-        //TODO: ここから挙動をコードしてください。
+        return this.playerNumber === 0;
     }
 
     /*
         return Boolean : テーブルがプレイヤー配列の最後のプレイヤーにフォーカスされている場合はtrue、そうでない場合はfalseを返します。
     */
     onLastPlayer() {
-        //TODO: ここから挙動をコードしてください。
+        return this.playerNumber === this.players.length - 1;
     }
     
     /*
         全てのプレイヤーがセット{'broken', 'bust', 'stand', 'surrender'}のgameStatusを持っていればtrueを返し、持っていなければfalseを返します。
     */
     allPlayerActionsResolved() {
-        //TODO: ここから挙動をコードしてください。
+        return this.players.every(player => player.gameStatus === "roundOver");
+    }
+
+    // 自作: 結果の評価
+    evaluateResults() {
+        for (const player of this.players) {
+            if (player.getHandScore() > 21) {
+                player.winAmount -= player.bet;
+                player.chips -= player.bet;  
+            }
+            else if (this.house.getHandScore() > 21 || (player.getHandScore() > this.house.getHandScore())) {
+                player.winAmount = player.bet;
+                player.chips += player.bet;
+            }
+            else if (this.house.getHandScore() <= 21 && (player.getHandScore() <= this.house.getHandScore())) {
+                player.winAmount -= player.bet;
+                player.chips -= player.bet;
+            }
+        }
+    }
+
+    // 自作: chipが0になっていないかを確認
+    isAnyOneChipsZero() {
+        for (const player of this.players) {
+            if (player.chips <= 0) {
+                this.gamePhase = "roundOver";
+            }
+        }
+        this.gamePhase = "betting";
     }
 }
+
+// ゲーム開始
+// ボタンが押下されたことによるリスナー作成
+
+// メイン画面
+// Start Game が押下されたら画面を切り替える
+// ただし、名前が入力されていない場合はエラー表示
+// TODO: プレイヤーの人数を可変にする
+let table;
+document.getElementById("start-btn").addEventListener("click", async () => {
+    const gameType = document.getElementById("game-type").value;
+    if (gameType !== "blackjack") {
+        alert("選択されたゲームは現在ご利用できません");
+        return;
+    }
+
+    const name = document.getElementById("name").value;
+    if (name.length === 0) {
+        alert("名前を入力してください");
+        return;
+    }
+
+    // nameを取得して、Tableインスタンスを作成
+    const userType = (name.toLowerCase() === "ai") ? "ai" : "user";
+    const userName = (name.toLowerCase() === "ai") ? "AI-2" : name;
+    table = new Table(gameType, userName, userType);
+
+    // 画面にプレイヤーを表示
+    // TODO: Tableインスタンスからプレイヤーの名前の配列を取得したい
+    table.players.forEach(player => createUserHandDiv(player));
+
+    // 画面を切り替える
+    displayNone(config.menu);
+    displayBlock(config.game);
+
+    await renderTable(table);
+});
+
+const renderTable = async (table) => {
+    const onPlayer = table.getTurnPlayer();
+
+    if (table.gamePhase === "betting") {
+        document.getElementById(`${onPlayer.name}-name`).classList.add("border", "border-warning");
+        await table.haveTurn(onPlayer);
+        changeStatus(onPlayer);
+        document.getElementById(`${onPlayer.name}-name`).classList.remove("border", "border-warning");
+
+        if (table.getTurnPlayer().type === "ai") {
+            await renderTable(table);
+        } else {
+            displayBlock(config.betting);
+        }
+    }
+    else if (table.gamePhase === "dealCards") {
+        document.getElementById("house-status").innerHTML = "Waiting for actions";
+
+        // forEachはPromiseを持たないためfor loopを使用
+        for(const player of table.players) {
+            await sleepSec(0.5);
+            for (const card of player.hand) {
+                await sleepSec(0.2);
+                createCardDiv(player.name, card);
+            }
+        }
+
+        await sleepSec(0.5);
+        createCardDiv(table.house.name, table.house.hand[0]);
+        await sleepSec(0.2);
+        createCardDiv(table.house.name, table.house.hand[1], false);
+
+        await table.haveTurn();
+        await renderTable(table);
+    } 
+    else if (table.gamePhase === "acting") {
+        if (!table.allPlayerActionsResolved()) {
+            document.getElementById(`${onPlayer.name}-name`).classList.add("border", "border-warning");
+        }
+        await table.haveTurn(onPlayer);
+
+        if (onPlayer.gameStatus !== "roundOver" && onPlayer.type === "ai") {
+            await sleepSec(0.5);
+            createCardDiv(onPlayer.name, onPlayer.hand[onPlayer.hand.length - 1]);
+        }
+
+        if (onPlayer.type === "user") {
+            await sleepSec(0.5);
+            resetCardDiv(onPlayer.name);
+            onPlayer.hand.forEach((it) => createCardDiv(onPlayer.name, it));    
+
+        }
+
+        if (table.allPlayerActionsResolved()) {
+            await sleepSec(0.8);
+            resetCardDiv(table.house.name);
+            table.house.hand.forEach((it) => createCardDiv(table.house.name, it));    
+        }
+        changeStatus(onPlayer);
+        document.getElementById(`${onPlayer.name}-name`).classList.remove("border", "border-warning");
+
+        if (table.getTurnPlayer().type === "ai") {
+            displayNone(config.action);
+            await renderTable(table);
+        } else {
+            displayBlock(config.action);
+        }
+    }
+    else if (table.gamePhase === "evaluating") {
+        await table.haveTurn();
+        table.players.forEach(player => changeStatus(player));
+        await renderTable(table);
+    }
+    else if (table.gamePhase === "roundOver") {
+        displayBlock(config.nextGame);
+        betValue.forEach(bet => bet.value = 0);
+        return;
+    }
+
+    // await renderTable(table);
+};
+
+// ベットの枚数調整ボタン
+const betValue = document.querySelectorAll(".bet");
+const plusBtn = document.querySelectorAll(".plus");
+const minusBtn = document.querySelectorAll(".minus");
+for (let i = 0; i < betValue.length; i++) {
+    plusBtn[i].addEventListener("click", () => {
+        const value = parseInt(betValue[i].value) + 1;
+        betValue[i].value = value;
+    });
+    minusBtn[i].addEventListener("click", () => {
+        const value = parseInt(betValue[i].value) - 1;
+        betValue[i].value = (value < 0) ? 0 : value;
+    });
+}
+
+// Betボタンが押下されたことによるリスナー作成
+document.getElementById("bet-btn").addEventListener("click", async () => {
+    let totalBet = 0;
+    [5, 10, 20, 50].forEach((num, index) => {
+        totalBet += betValue[index].value * num;
+    });
+
+    if (totalBet <= 0) {
+        alert("ベットしてください");
+        return;
+    }
+
+    displayNone(config.betting);
+    table.players[1].bet = totalBet;
+
+    await renderTable(table);
+});
+
+/**
+ * 画面を非表示にする
+ * @param element
+ */
+ const displayNone = (element) => {
+    element.classList.add("d-none");
+    element.classList.remove("d-block");
+};
+
+/**
+ * 画面を表示する
+ * @param element 
+ */
+const displayBlock = (element) => {
+    element.classList.remove("d-none");
+    element.classList.add("d-block");
+};
+
+/**
+ * プレイヤーの手札、ステータスをusers-handの要素に追加する
+ * @param player.name 
+ */
+// TODO: nameではなくPlayerインスタンスを使用する
+const createUserHandDiv = (player) => {
+    const usersHandDiv = document.getElementById("users-hand");
+    usersHandDiv.innerHTML +=
+    `
+    <div class="col-md-auto mx-2">
+        <div class="row justify-content-center">
+            <div class="col-md-8" id="${player.name}-name">
+                <h2 class="text-white text-center">${player.name}</h2>
+            </div>
+            <div class="w-100"></div>
+            <div>
+                <p class="text-white">Status: <span id="${player.name}-status">${player.gameStatus}</span> Bet: <span id="${player.name}-bet">${player.bet}</span> Chip: <span id="${player.name}-chips">${player.chips}</span></p>
+            </div>
+        </div>
+    
+        <div class="row justify-content-center" id="${player.name}-hand"></div>
+    `;
+};
+
+const createCardDiv = (name, card, isShow = true) => {
+    const userHandDiv = document.getElementById(`${name}-hand`);
+    if (isShow) {
+        userHandDiv.innerHTML +=
+        `
+        <div class="card mx-1" style="width: 5rem; height: 7rem;">
+            <img class="card-img-top img-fluid w-50 mx-auto" src="images/suits/${config.suitsName[card.suit]}.png" alt="Card image cap">
+            <div class="card-body">
+                <h2 class="card-title text-center">${card.rank}</h2>
+            </div>
+        </div>
+        `;
+    } else {
+        userHandDiv.innerHTML +=
+        `
+        <div class="card mx-1" style="width: 5rem; height: 7rem;">
+            <div class="card-body">
+                <h2 class="card-title text-center">?</h2>
+            </div>
+        </div>
+        `;
+        
+    }
+};
+
+const resetCardDiv = (name) => {
+    document.getElementById(`${name}-hand`).innerHTML = "";
+}
+
+const changeStatus = (player) => {
+    document.getElementById(`${player.name}-status`).innerHTML = `${player.gameStatus}`;
+    document.getElementById(`${player.name}-bet`).innerHTML = `${player.bet}`;
+    document.getElementById(`${player.name}-chips`).innerHTML = `${player.chips}`;
+}
+
+config.nextGame.addEventListener("click", () => {
+    displayNone(config.nextGame);
+    table.players.forEach(player => resetCardDiv(player.name));
+    resetCardDiv(table.house.name);
+    table.gamePhase = "betting";
+    renderTable(table);
+});
+
+document.getElementById("surrender").addEventListener("click", async () => {
+    table.players[1].gameStatus = "surrender";
+    await renderTable(table);
+})
+
+document.getElementById("stand").addEventListener("click", async () => {
+    table.players[1].gameStatus = "stand";
+    await renderTable(table);
+})
+
+document.getElementById("hit").addEventListener("click", async () => {
+    table.players[1].gameStatus = "hit";
+    await renderTable(table);
+})
+
+document.getElementById("double").addEventListener("click", async () => {
+    table.players[1].gameStatus = "double";
+    await renderTable(table);
+})
