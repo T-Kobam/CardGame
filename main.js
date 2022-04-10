@@ -544,8 +544,10 @@ const renderTable = async (table) => {
     const onPlayer = table.getTurnPlayer();
 
     if (table.gamePhase === "betting") {
+        document.getElementById(`${onPlayer.name}-name`).classList.add("border", "border-warning");
         await table.haveTurn(onPlayer);
         changeStatus(onPlayer);
+        document.getElementById(`${onPlayer.name}-name`).classList.remove("border", "border-warning");
 
         if (table.getTurnPlayer().type === "ai") {
             await renderTable(table);
@@ -574,6 +576,9 @@ const renderTable = async (table) => {
         await renderTable(table);
     } 
     else if (table.gamePhase === "acting") {
+        if (!table.allPlayerActionsResolved()) {
+            document.getElementById(`${onPlayer.name}-name`).classList.add("border", "border-warning");
+        }
         await table.haveTurn(onPlayer);
 
         if (onPlayer.gameStatus !== "roundOver" && onPlayer.type === "ai") {
@@ -594,6 +599,7 @@ const renderTable = async (table) => {
             table.house.hand.forEach((it) => createCardDiv(table.house.name, it));    
         }
         changeStatus(onPlayer);
+        document.getElementById(`${onPlayer.name}-name`).classList.remove("border", "border-warning");
 
         if (table.getTurnPlayer().type === "ai") {
             displayNone(config.action);
@@ -678,7 +684,7 @@ const createUserHandDiv = (player) => {
     `
     <div class="col-md-auto mx-2">
         <div class="row justify-content-center">
-            <div class="col-md-8">
+            <div class="col-md-8" id="${player.name}-name">
                 <h2 class="text-white text-center">${player.name}</h2>
             </div>
             <div class="w-100"></div>
