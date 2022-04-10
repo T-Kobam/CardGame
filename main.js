@@ -241,7 +241,11 @@ class Player {
         }
 
         if (this.type === "user") {
-            return new GameDecision(this.gameStatus, this.bet);
+            let bet = this.bet;
+            if (this.gameStatus === "hit") {
+                bet = 0;
+            }
+            return new GameDecision(this.gameStatus, bet);
         }
 
         if (this.type === "house") {
@@ -467,7 +471,7 @@ class Table {
         全てのプレイヤーがセット{'broken', 'bust', 'stand', 'surrender'}のgameStatusを持っていればtrueを返し、持っていなければfalseを返します。
     */
     allPlayerActionsResolved() {
-        return this.players.every((player) => player.gameStatus === "roundOver");
+        return this.players.every(player => player.gameStatus === "roundOver");
     }
 
     // 自作: 結果の評価
@@ -533,9 +537,6 @@ document.getElementById("start-btn").addEventListener("click", async () => {
     displayNone(config.menu);
     displayBlock(config.game);
 
-    if (userType === "ai") { 
-        displayNone(config.betting);
-    }
     await renderTable(table);
 });
 
@@ -548,6 +549,8 @@ const renderTable = async (table) => {
 
         if (table.getTurnPlayer().type === "ai") {
             await renderTable(table);
+        } else {
+            displayBlock(config.betting);
         }
     }
     else if (table.gamePhase === "dealCards") {
@@ -555,16 +558,16 @@ const renderTable = async (table) => {
 
         // forEachはPromiseを持たないためfor loopを使用
         for(const player of table.players) {
-            await sleepSec(0.8);
+            await sleepSec(0.5);
             for (const card of player.hand) {
-                await sleepSec(0.3);
+                await sleepSec(0.2);
                 createCardDiv(player.name, card);
             }
         }
 
-        await sleepSec(0.8);
+        await sleepSec(0.5);
         createCardDiv(table.house.name, table.house.hand[0]);
-        await sleepSec(0.3);
+        await sleepSec(0.2);
         createCardDiv(table.house.name, table.house.hand[1], false);
 
         await table.haveTurn();
@@ -573,9 +576,16 @@ const renderTable = async (table) => {
     else if (table.gamePhase === "acting") {
         await table.haveTurn(onPlayer);
 
-        if (onPlayer.gameStatus !== "roundOver") {
+        if (onPlayer.gameStatus !== "roundOver" && onPlayer.type === "ai") {
             await sleepSec(0.5);
             createCardDiv(onPlayer.name, onPlayer.hand[onPlayer.hand.length - 1]);
+        }
+
+        if (onPlayer.type === "user") {
+            await sleepSec(0.5);
+            resetCardDiv(onPlayer.name);
+            onPlayer.hand.forEach((it) => createCardDiv(onPlayer.name, it));    
+
         }
 
         if (table.allPlayerActionsResolved()) {
@@ -586,7 +596,10 @@ const renderTable = async (table) => {
         changeStatus(onPlayer);
 
         if (table.getTurnPlayer().type === "ai") {
+            displayNone(config.action);
             await renderTable(table);
+        } else {
+            displayBlock(config.action);
         }
     }
     else if (table.gamePhase === "evaluating") {
@@ -596,6 +609,7 @@ const renderTable = async (table) => {
     }
     else if (table.gamePhase === "roundOver") {
         displayBlock(config.nextGame);
+        betValue.forEach(bet => bet.value = 0);
         return;
     }
 
@@ -630,8 +644,6 @@ document.getElementById("bet-btn").addEventListener("click", async () => {
     }
 
     displayNone(config.betting);
-    displayBlock(config.action);
-
     table.players[1].bet = totalBet;
 
     await renderTable(table);
@@ -722,7 +734,22 @@ config.nextGame.addEventListener("click", () => {
     renderTable(table);
 });
 
+document.getElementById("surrender").addEventListener("click", async () => {
+    table.players[1].gameStatus = "surrender";
+    await renderTable(table);
+})
+
 document.getElementById("stand").addEventListener("click", async () => {
     table.players[1].gameStatus = "stand";
+    await renderTable(table);
+})
+
+document.getElementById("hit").addEventListener("click", async () => {
+    table.players[1].gameStatus = "hit";
+    await renderTable(table);
+})
+
+document.getElementById("double").addEventListener("click", async () => {
+    table.players[1].gameStatus = "double";
     await renderTable(table);
 })
