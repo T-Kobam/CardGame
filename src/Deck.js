@@ -1,3 +1,6 @@
+import { Card } from "./Card.js"
+import { config } from "./Utils.js"
+
 /**
  * デッキClass
  * カードの集合体
